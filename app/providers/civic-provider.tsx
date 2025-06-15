@@ -1,79 +1,27 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { CivicAuthProvider as RealCivicAuthProvider } from '@civic/auth-web3/react'
 
-// Mock Civic Auth implementation for demo purposes
-interface User {
-  id: string
-  name: string
-  email: string
-  walletAddress: string
-}
+export function CivicAuthProvider({ children }: { children: React.ReactNode }) {
+  const clientId = process.env.NEXT_PUBLIC_CIVIC_CLIENT_ID!
 
-interface CivicContextType {
-  user: User | null
-  isAuthenticated: boolean
-  login: () => Promise<void>
-  logout: () => void
-  isLoading: boolean
-}
-
-const CivicContext = createContext<CivicContextType | undefined>(undefined)
-
-export function CivicAuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    // Check for existing session
-    const savedUser = localStorage.getItem("medilocker-user")
-    if (savedUser) {
-      setUser(JSON.parse(savedUser))
-    }
-    setIsLoading(false)
-  }, [])
-
-  const login = async () => {
-    setIsLoading(true)
-    // Simulate Civic Auth login
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    const mockUser: User = {
-      id: "1",
-      name: "Dr. Sarah Johnson",
-      email: "sarah.johnson@email.com",
-      walletAddress: "0x742d35Cc6634C0532925a3b8D4C0532925a3b8D4",
-    }
-
-    setUser(mockUser)
-    localStorage.setItem("medilocker-user", JSON.stringify(mockUser))
-    setIsLoading(false)
+  if (!clientId) {
+    console.error('NEXT_PUBLIC_CIVIC_CLIENT_ID is required')
+    return <div>Error: Civic Client ID not configured</div>
   }
 
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem("medilocker-user")
-  }
+  console.log('Civic Auth Provider initialized with client ID:', clientId)
 
   return (
-    <CivicContext.Provider
-      value={{
-        user,
-        isAuthenticated: !!user,
-        login,
-        logout,
-        isLoading,
+    <RealCivicAuthProvider 
+      clientId={clientId}
+      redirectUrl={typeof window !== 'undefined' ? window.location.origin : '/'}
+      config={{
+        enableWalletConnection: true,
+        enableEmbeddedWallet: true,
       }}
     >
       {children}
-    </CivicContext.Provider>
+    </RealCivicAuthProvider>
   )
-}
-
-export function useCivic() {
-  const context = useContext(CivicContext)
-  if (context === undefined) {
-    throw new Error("useCivic must be used within a CivicAuthProvider")
-  }
-  return context
 }

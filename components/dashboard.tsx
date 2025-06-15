@@ -1,172 +1,165 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useCivic } from "@/app/providers/civic-provider"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { useUser } from '@civic/auth-web3/react'
 import { UploadForm } from "./upload-form"
 import { DocumentList } from "./document-list"
 import { StatsCards } from "./stats-cards"
-import { FileText, Upload, Share2, Activity } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { CheckCircle, AlertCircle, User } from "lucide-react"
 
-export interface Document {
-  id: string
-  fileName: string
-  fileType: string
-  uploadDate: string
-  ipfsHash: string
-  size: string
-  shared: boolean
+interface DashboardProps {
+  walletAddress?: string | null
 }
 
-export function Dashboard() {
-  const { user } = useCivic()
-  const [documents, setDocuments] = useState<Document[]>([])
-  const [showUpload, setShowUpload] = useState(false)
+export function Dashboard({ walletAddress }: DashboardProps) {
+  const { user } = useUser()
+  const [showWalletAlert, setShowWalletAlert] = useState(false)
 
-  // Mock documents for demo
+  // Check if wallet is connected
   useEffect(() => {
-    const mockDocs: Document[] = [
-      {
-        id: "1",
-        fileName: "Blood Test Results - March 2024.pdf",
-        fileType: "PDF",
-        uploadDate: "2024-03-15",
-        ipfsHash: "QmX7Vz8K9...",
-        size: "2.4 MB",
-        shared: false,
-      },
-      {
-        id: "2",
-        fileName: "MRI Scan - Brain.dcm",
-        fileType: "DICOM",
-        uploadDate: "2024-03-10",
-        ipfsHash: "QmY8Wx9L0...",
-        size: "45.2 MB",
-        shared: true,
-      },
-      {
-        id: "3",
-        fileName: "Prescription - Dr. Smith.pdf",
-        fileType: "PDF",
-        uploadDate: "2024-03-08",
-        ipfsHash: "QmZ9Yx0M1...",
-        size: "1.1 MB",
-        shared: false,
-      },
-    ]
-    setDocuments(mockDocs)
-  }, [])
+    if (!walletAddress) {
+      setShowWalletAlert(true)
+    }
+  }, [walletAddress])
 
-  const handleUploadSuccess = (newDoc: Document) => {
-    setDocuments((prev) => [newDoc, ...prev])
-    setShowUpload(false)
+  // Get user display name
+  const getUserDisplayName = () => {
+    if (!user) return "User"
+    
+    // Try to get name from different properties
+    const name = user.name || 
+                 user.displayName || 
+                 user.firstName || 
+                 user.email?.split('@')[0] ||
+                 "User"
+    
+    // Add title based on email domain or other indicators
+    const email = user.email || ""
+    if (email.includes('doctor') || email.includes('dr.')) {
+      return `Dr. ${name}`
+    } else if (email.includes('nurse')) {
+      return `Nurse ${name}`
+    } else {
+      // For now, let's assume medical professionals
+      return `Dr. ${name}`
+    }
   }
 
-  const handleShare = (docId: string) => {
-    setDocuments((prev) => prev.map((doc) => (doc.id === docId ? { ...doc, shared: !doc.shared } : doc)))
-  }
+  const displayName = getUserDisplayName()
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Welcome back, {user?.name?.split(" ")[0]}!</h1>
-        <p className="text-gray-600">Manage your medical records securely and share them with healthcare providers.</p>
+    <div className="space-y-8">
+      {/* Welcome Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg p-6 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Welcome back, {displayName}!</h1>
+            <p className="text-blue-100">Manage your medical records securely and share them with healthcare providers.</p>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="text-right">
+              <div className="text-sm text-blue-200">Wallet Status</div>
+              <div className="font-semibold">
+                {walletAddress ? (
+                  <div className="flex items-center">
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    Connected
+                  </div>
+                ) : (
+                  <div className="flex items-center">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    Not Connected
+                  </div>
+                )}
+              </div>
+            </div>
+            <User className="h-8 w-8" />
+          </div>
+        </div>
       </div>
 
-      <StatsCards documents={documents} />
-
-      <div className="grid lg:grid-cols-3 gap-8 mb-8">
-        <div className="lg:col-span-2">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-semibold">Your Medical Records</h2>
-            <Button
-              onClick={() => setShowUpload(!showUpload)}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 hover:scale-105 transition-all duration-200"
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              Upload New Record
-            </Button>
-          </div>
-
-          {showUpload && (
-            <div className="mb-6">
-              <UploadForm onUploadSuccess={handleUploadSuccess} onCancel={() => setShowUpload(false)} />
+      {/* Wallet Connection Alert */}
+      {showWalletAlert && (
+        <Alert className="border-yellow-200 bg-yellow-50">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <div className="flex items-center justify-between">
+              <span>Your wallet is not connected. Connect your wallet to access all features.</span>
+              <Button 
+                size="sm" 
+                onClick={() => setShowWalletAlert(false)}
+                className="ml-4"
+              >
+                Dismiss
+              </Button>
             </div>
-          )}
+          </AlertDescription>
+        </Alert>
+      )}
 
-          <DocumentList documents={documents} onShare={handleShare} />
-        </div>
+      {/* Stats Cards */}
+      <StatsCards walletAddress={walletAddress} />
 
-        <div className="space-y-6">
-          <Card className="hover:shadow-lg transition-shadow duration-200">
+      {/* Main Content */}
+      <div className="grid lg:grid-cols-3 gap-8">
+        {/* Upload Section */}
+        <div className="lg:col-span-1">
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <Activity className="mr-2 h-5 w-5 text-blue-600" />
-                Recent Activity
-              </CardTitle>
+              <CardTitle>Upload New Record</CardTitle>
+              <CardDescription>Add a new medical document to your secure locker</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">Blood test uploaded</p>
-                    <p className="text-xs text-gray-500">2 hours ago</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">MRI shared with Dr. Johnson</p>
-                    <p className="text-xs text-gray-500">1 day ago</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3 p-3 bg-purple-50 rounded-lg">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">Prescription added</p>
-                    <p className="text-xs text-gray-500">3 days ago</p>
-                  </div>
-                </div>
-              </div>
+              <UploadForm walletAddress={walletAddress} />
             </CardContent>
           </Card>
+        </div>
 
-          <Card className="hover:shadow-lg transition-shadow duration-200">
+        {/* Documents List */}
+        <div className="lg:col-span-2">
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <Share2 className="mr-2 h-5 w-5 text-green-600" />
-                Quick Actions
-              </CardTitle>
-              <CardDescription>Common tasks you might want to perform</CardDescription>
+              <CardTitle>Your Medical Records</CardTitle>
+              <CardDescription>
+                {walletAddress ? 
+                  "Your documents are securely stored and linked to your wallet." :
+                  "Your documents are securely stored and ready for management."
+                }
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <Button
-                variant="outline"
-                className="w-full justify-start hover:bg-blue-50 hover:border-blue-200 transition-colors"
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                Generate Health Summary
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full justify-start hover:bg-green-50 hover:border-green-200 transition-colors"
-              >
-                <Share2 className="mr-2 h-4 w-4" />
-                Share with New Provider
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full justify-start hover:bg-purple-50 hover:border-purple-200 transition-colors"
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                Bulk Upload Records
-              </Button>
+            <CardContent>
+              <DocumentList walletAddress={walletAddress} />
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+          <CardDescription>Common tasks you might want to perform</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-3 gap-4">
+            <Button variant="outline" className="h-20 flex flex-col items-center justify-center">
+              <span className="font-semibold">Generate Health Summary</span>
+              <span className="text-sm text-gray-500">Create a comprehensive report</span>
+            </Button>
+            <Button variant="outline" className="h-20 flex flex-col items-center justify-center">
+              <span className="font-semibold">Share with New Provider</span>
+              <span className="text-sm text-gray-500">Grant access to healthcare provider</span>
+            </Button>
+            <Button variant="outline" className="h-20 flex flex-col items-center justify-center">
+              <span className="font-semibold">Bulk Upload Records</span>
+              <span className="text-sm text-gray-500">Upload multiple files at once</span>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

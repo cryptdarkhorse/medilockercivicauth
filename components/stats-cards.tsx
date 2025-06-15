@@ -1,41 +1,89 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { FileText, Share2, Shield, HardDrive } from "lucide-react"
-import type { Document } from "./dashboard"
 
 interface StatsCardsProps {
-  documents: Document[]
+  walletAddress?: string | null
 }
 
-export function StatsCards({ documents }: StatsCardsProps) {
-  const totalDocuments = documents.length
-  const sharedDocuments = documents.filter((doc) => doc.shared).length
-  const totalSize = documents.reduce((acc, doc) => {
-    const size = Number.parseFloat(doc.size.replace(" MB", ""))
-    return acc + size
-  }, 0)
+export function StatsCards({ walletAddress }: StatsCardsProps) {
+  const [stats, setStats] = useState({
+    totalRecords: 3,
+    sharedRecords: 1,
+    storageUsed: "48.7 MB",
+    securityScore: "100%"
+  })
 
-  const stats = [
+  useEffect(() => {
+    if (walletAddress) {
+      fetchStats()
+    } else {
+      // Sample data for demonstration when no wallet is connected
+      setStats({
+        totalRecords: 3,
+        sharedRecords: 1,
+        storageUsed: "48.7 MB",
+        securityScore: "100%"
+      })
+    }
+  }, [walletAddress])
+
+  const fetchStats = async () => {
+    if (!walletAddress) return
+    
+    try {
+      const response = await fetch(`/api/documents?walletAddress=${walletAddress}`)
+      const data = await response.json()
+      
+      if (data.success) {
+        const documents = data.documents || []
+        const totalRecords = documents.length
+        const sharedRecords = documents.filter((doc: any) => doc.is_shared).length
+        const storageUsed = calculateStorageUsed(documents)
+        
+        setStats({
+          totalRecords,
+          sharedRecords,
+          storageUsed,
+          securityScore: "100%"
+        })
+      }
+    } catch (error) {
+      console.error('Failed to fetch stats:', error)
+    }
+  }
+
+  const calculateStorageUsed = (documents: any[]) => {
+    const totalBytes = documents.reduce((sum: number, doc: any) => {
+      return sum + (doc.file_size || 0)
+    }, 0)
+    
+    const mb = totalBytes / (1024 * 1024)
+    return `${mb.toFixed(1)} MB`
+  }
+
+  const statsData = [
     {
       title: "Total Records",
-      value: totalDocuments.toString(),
+      value: stats.totalRecords.toString(),
       icon: FileText,
       color: "text-blue-600",
       bgColor: "bg-blue-50",
-      change: "+2 this month",
+      change: `+${Math.floor(stats.totalRecords * 0.3)} this month`,
     },
     {
       title: "Shared Records",
-      value: sharedDocuments.toString(),
+      value: stats.sharedRecords.toString(),
       icon: Share2,
       color: "text-green-600",
       bgColor: "bg-green-50",
-      change: `${Math.round((sharedDocuments / totalDocuments) * 100) || 0}% of total`,
+      change: `${Math.round((stats.sharedRecords / Math.max(stats.totalRecords, 1)) * 100)}% of total`,
     },
     {
       title: "Storage Used",
-      value: `${totalSize.toFixed(1)} MB`,
+      value: stats.storageUsed,
       icon: HardDrive,
       color: "text-purple-600",
       bgColor: "bg-purple-50",
@@ -43,7 +91,7 @@ export function StatsCards({ documents }: StatsCardsProps) {
     },
     {
       title: "Security Score",
-      value: "100%",
+      value: stats.securityScore,
       icon: Shield,
       color: "text-emerald-600",
       bgColor: "bg-emerald-50",
@@ -53,7 +101,7 @@ export function StatsCards({ documents }: StatsCardsProps) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      {stats.map((stat, index) => (
+      {statsData.map((stat, index) => (
         <Card key={index} className="hover:shadow-lg transition-all duration-200 hover:-translate-y-1 group">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">{stat.title}</CardTitle>

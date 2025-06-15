@@ -9,14 +9,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Upload, X, FileText, ImageIcon, File } from "lucide-react"
-import type { Document } from "./dashboard"
-
+import { useWallet } from "@solana/wallet-adapter-react"
 interface UploadFormProps {
-  onUploadSuccess: (doc: Document) => void
-  onCancel: () => void
+  walletAddress?: string | null
+  onUploadSuccess?: () => void
+  onCancel?: () => void
 }
 
-export function UploadForm({ onUploadSuccess, onCancel }: UploadFormProps) {
+export function UploadForm({ walletAddress, onUploadSuccess, onCancel }: UploadFormProps) {
+  const { wallet } = useWallet() || {}
   const [file, setFile] = useState<File | null>(null)
   const [description, setDescription] = useState("")
   const [isUploading, setIsUploading] = useState(false)
@@ -60,25 +61,37 @@ export function UploadForm({ onUploadSuccess, onCancel }: UploadFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!file) return
+    if (!file || !walletAddress) {
+      alert('Please select a file and make sure you are logged in.')
+      return
+    }
 
     setIsUploading(true)
 
-    // Simulate upload delay
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('userWalletAddress', walletAddress)
 
-    const newDoc: Document = {
-      id: Date.now().toString(),
-      fileName: file.name,
-      fileType: file.name.split(".").pop()?.toUpperCase() || "FILE",
-      uploadDate: new Date().toISOString().split("T")[0],
-      ipfsHash: `Qm${Math.random().toString(36).substring(2, 15)}...`,
-      size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-      shared: false,
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        alert('File uploaded successfully!')
+        onUploadSuccess?.()
+      } else {
+        throw new Error(data.error || 'Upload failed')
+      }
+    } catch (error) {
+      console.error('Upload error:', error)
+      alert('Upload failed. Please try again.')
+    } finally {
+      setIsUploading(false)
     }
-
-    onUploadSuccess(newDoc)
-    setIsUploading(false)
   }
 
   return (
@@ -158,7 +171,7 @@ export function UploadForm({ onUploadSuccess, onCancel }: UploadFormProps) {
           <div className="flex space-x-3">
             <Button
               type="submit"
-              disabled={!file || isUploading}
+              disabled={!file || isUploading || !walletAddress}
               className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
             >
               {isUploading ? (
@@ -173,9 +186,11 @@ export function UploadForm({ onUploadSuccess, onCancel }: UploadFormProps) {
                 </>
               )}
             </Button>
-            <Button type="button" variant="outline" onClick={onCancel}>
-              Cancel
-            </Button>
+            {onCancel && (
+              <Button type="button" variant="outline" onClick={onCancel}>
+                Cancel
+              </Button>
+            )}
           </div>
         </form>
       </CardContent>

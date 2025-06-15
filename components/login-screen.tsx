@@ -1,21 +1,11 @@
 "use client"
 
-import { useState } from "react"
-import { useCivic } from "@/app/providers/civic-provider"
-import { Button } from "@/components/ui/button"
+import { useUser, UserButton } from '@civic/auth-web3/react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Shield, Lock, Share2, FileText, ArrowRight } from "lucide-react"
-import { LoadingSpinner } from "./loading-spinner"
+import { Shield, Lock, Share2, FileText } from "lucide-react"
 
 export function LoginScreen() {
-  const { login, isLoading } = useCivic()
-  const [isLoggingIn, setIsLoggingIn] = useState(false)
-
-  const handleLogin = async () => {
-    setIsLoggingIn(true)
-    await login()
-    setIsLoggingIn(false)
-  }
+  const { user, authStatus } = useUser()
 
   const features = [
     {
@@ -61,21 +51,12 @@ export function LoginScreen() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="text-center">
-                <Button
-                  onClick={handleLogin}
-                  disabled={isLoggingIn}
-                  size="lg"
-                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
-                >
-                  {isLoggingIn ? (
-                    <LoadingSpinner size="sm" />
-                  ) : (
-                    <>
-                      Connect with Civic Auth
-                      <ArrowRight className="ml-2 h-5 w-5" />
-                    </>
-                  )}
-                </Button>
+                <div className="space-y-4">
+                  {/* Use Civic's UserButton component directly */}
+                  <div className="flex justify-center">
+                    <UserButton />
+                  </div>
+                </div>
                 <p className="text-sm text-gray-500 mt-4">No crypto experience needed. Just your email.</p>
               </CardContent>
             </Card>

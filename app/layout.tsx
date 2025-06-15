@@ -1,14 +1,17 @@
 import type React from "react"
 import "./globals.css"
 import { Inter } from "next/font/google"
-import { CivicAuthProvider } from "./providers/civic-provider"
+import ClientProviders from "./ClientProviders"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
   title: "Medilocker - Secure Medical Records",
   description: "Empowering patients with full ownership of their health records",
-    generator: 'v0.dev'
+  generator: "Naman Jain",
+  icons:{
+    icon:"./medilocker.ico",
+  }
 }
 
 export default function RootLayout({
@@ -19,7 +22,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <CivicAuthProvider>{children}</CivicAuthProvider>
+        <ClientProviders>
+          {children}
+        </ClientProviders>
       </body>
     </html>
   )
